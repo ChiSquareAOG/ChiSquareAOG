@@ -14,21 +14,18 @@ class ScaleParametricDistribution:
 
     def __init__(self, name, scale, count, rvs):
         self.name = name
-        self.param=[]
+        self.param = []
         self.param.append(0)
         self.param.append(scale)
         self.count = count
         self.rvs = rvs
-
+        self.scale_estimation = false
 
     def mle(self):
         if self.param[1] is None:
             mle = self.name.fit(self.rvs)
             self.scale_estimation = true
             self.param[1] = mle[1]
-        else:
-            self.param[1] = scale
-            self.scale_estimation = false
 
     def estimate_parameters(self, points, ks):
         if self.scale_estimation:
@@ -42,46 +39,46 @@ class ScaleParametricDistribution:
         s = 0
         for i in range(0, self.count - 1):
             s -= ks[i] * log(
-                self.name.cdf(points[i + 1], scale=x[0], loc=0) - self.name.cdf(points[i], scale=x[0],loc=0))
-        s -= ks[count - 1] * log(1 - self.name.cdf(points[count - 1], scale=x[0], loc=0))
+                self.name.cdf(points[i + 1], scale=x[0], loc=0) - self.name.cdf(points[i], scale=x[0], loc=0))
+        s -= ks[self.count - 1] * log(1 - self.name.cdf(points[self.count - 1], scale=x[0], loc=0))
         return s
 
     def get_freedom_value(self):
-        freedom_value=self.count-1
+        freedom_value = self.count-1
         if self.scale_estimation:
             freedom_value = freedom_value-1
         return freedom_value
 
     def calculate_probabilities(self, points):
-        probs = np.zeros(count)
-        for i in range(1, count):
+        probs = np.zeros(self.count)
+        for i in range(1, self.count):
             probs[i - 1] = self.name.cdf(points[i], scale=self.param[1]) - self.name.cdf(
                 points[i - 1], scale=self.param[1])
-        probs[count - 1] = 1 - self.name.cdf(points[count - 1], scale=self.param[1])
+        probs[self.count - 1] = 1 - self.name.cdf(points[self.count - 1], scale=self.param[1])
 
         return probs
 
 
 class LocScaleParametricDistribution:
-    def __init__(self, name, loc, scale, count, rvs):
+    def __init__(self, name, loc, scale, k, rvs):
         self.name = name
-        self.param=[]
+        self.param = []
         self.param.append(loc)
         self.param.append(scale)
-        self.count = count
+        self.k = k
         self.rvs = rvs
-
+        self.loc_estimation = false
+        self.scale_estimation = false
 
     def mle(self):
         self.scale_estimation = false
-        self.loc_estimation = false
         mle = self.name.fit(self.rvs)
         if self.param[0] is None:
-            self.param[0]=mle[0]
+            self.param[0] = mle[0]
             self.loc_estimation = true
         if self.param[1] is None:
-            self.param[1]=mle[1]
-            self.scale_estimation=true
+            self.param[1] = mle[1]
+            self.scale_estimation = true
 
     def estimate_parameters(self, points, ks):
         if self.loc_estimation:
@@ -106,66 +103,70 @@ class LocScaleParametricDistribution:
         s = 0
         for i in range(0, self.k - 1):
             s -= ks[i] * log(
-                self.name.cdf(points[i + 1], scale=x[0], loc=self.param[0]) - self.name.cdf(points[i], scale=x[0],loc=self.param[0]))
-        s -= ks[k - 1] * log(1 - self.name.cdf(points[k - 1], scale=x[0],loc=self.param[0]))
+                self.name.cdf(points[i + 1], scale=x[0], loc=self.param[0]) - self.name.cdf(points[i], scale=x[0], loc=self.param[0]))
+        s -= ks[self.k - 1] * log(1 - self.name.cdf(points[self.k - 1], scale=x[0], loc=self.param[0]))
         return s
-    def lnl_loc (self,x,points,ks):
+
+    def lnl_loc(self, x, points, ks):
         s = 0
         for i in range(0, self.k - 1):
             s -= ks[i] * log(
                 self.name.cdf(points[i + 1], scale=self.param[1], loc=x[0]) - self.name.cdf(points[i], scale=self.param[1],
                                                                                             loc=x[0]))
-        s -= ks[k - 1] * log(1 - self.name.cdf(points[k - 1], scale=self.param[1], loc=x[0]))
+        s -= ks[self.k - 1] * log(1 - self.name.cdf(points[self.k - 1], scale=self.param[1], loc=x[0]))
         return s
-    def lnl_loc_scale (self,x,points,ks):
+
+    def lnl_loc_scale(self, x, points, ks):
         s = 0
         for i in range(0, self.k - 1):
             s -= ks[i] * log(
                 self.name.cdf(points[i + 1], scale=x[1], loc=x[0]) - self.name.cdf(points[i], scale=x[1],
                                                                                             loc=x[0]))
-        s -= ks[k - 1] * log(1 - self.name.cdf(points[k - 1], scale=x[1], loc=x[0]))
+        s -= ks[self.k - 1] * log(1 - self.name.cdf(points[self.k - 1], scale=x[1], loc=x[0]))
         return s
+
     def get_freedom_value(self):
-        freedom_value=self.k-1
+        freedom_value = self.k - 1
         if self.scale_estimation:
-            freedom_value=freedom_value-1
+            freedom_value = freedom_value - 1
         if self.loc_estimation:
             freedom_value = freedom_value - 1
         return freedom_value
 
     def calculate_probabilities(self, points):
-        probs = np.zeros(k)
-        for i in range(1, k):
+        probs = np.zeros(self.k)
+        for i in range(1, self.k):
             probs[i - 1] = self.name.cdf(points[i], loc=self.param[0], scale=self.param[1]) - self.name.cdf(
                 points[i - 1], loc=self.param[0], scale=self.param[1])
-        probs[k - 1] = 1 - self.name.cdf(points[k - 1], loc=self.param[0], scale=self.param[1])
+        probs[self.k - 1] = 1 - self.name.cdf(points[self.k - 1], loc=self.param[0], scale=self.param[1])
 
+        print("pro", probs)
         return probs
-
 
 
 class ShapeScaleParametricDistribution:
     def __init__(self, name, scale, shape, k, rvs):
         self.name = name
-        self.param=[]
+        self.param = []
         self.param.append(0)
         self.param.append(scale)
         self.param.append(shape)
         self.k = k
-        self.rvs = rvs
-
-
-    def mle(self):
         self.scale_estimation = false
         self.loc_estimation = false
         self.shape_estimation = false
-        mle = self.name.fit(data= self.rvs, loc=0)
+        self.rvs = rvs
+
+    def mle(self):
+
+        mle = self.name.fit(data=self.rvs, loc=0)
+        print (mle)
         if self.param[1] is None:
-            self.param[1]=mle[2]
-            self.scale_estimation=true
+            self.param[1] = mle[2]
+            self.scale_estimation = true
         if self.param[2] is None:
-            self.param[2]=mle[0]
-            self.shape_estimation=true
+            self.param[2] = mle[0]
+            self.shape_estimation = true
 
     def estimate_parameters(self, points, ks):
         if self.shape_estimation:
@@ -190,39 +191,53 @@ class ShapeScaleParametricDistribution:
         s = 0
         for i in range(0, self.k - 1):
             s -= ks[i] * log(
-                self.name.cdf(points[i + 1], self.param[2], loc=self.param[0], scale=x[0] ) - self.name.cdf(points[i], self.param[2], loc=self.param[0], scale=x[0],))
-        s -= ks[k - 1] * log(1 - self.name.cdf(points[k - 1], self.param[2],loc=self.param[0], scale=x[0]))
+                self.name.cdf(points[i + 1], self.param[2], loc=self.param[0], scale=x[0])
+                - self.name.cdf(points[i], self.param[2], loc=self.param[0], scale=x[0],))
+        s -= ks[self.k - 1] * log(1 - self.name.cdf(points[self.k - 1], self.param[2], loc=self.param[0], scale=x[0]))
         return s
-    def lnl_shape (self,x,points,ks):
+
+    def lnl_shape(self, x, points, ks):
         s = 0
         for i in range(0, self.k - 1):
             s -= ks[i] * log(
-                self.name.cdf(points[i + 1],x[0], scale=self.param[1], loc=self.param[0]) - self.name.cdf(points[i],
-                                                                                            x[0],scale=self.param[1], loc=self.param[0]))
-        s -= ks[k - 1] * log(1 - self.name.cdf(points[k - 1], x[0],scale=self.param[1], loc=self.param[0]))
+                self.name.cdf(points[i + 1], x[0], scale=self.param[1], loc=self.param[0])
+                - self.name.cdf(points[i], x[0], scale=self.param[1], loc=self.param[0]))
+        s -= ks[self.k - 1] * log(1 - self.name.cdf(points[self.k - 1], x[0], scale=self.param[1], loc=self.param[0]))
         return s
-    def lnl_shape_scale (self,x,points,ks):
+
+    def lnl_shape_scale(self, x, points, ks):
         s = 0
         for i in range(0, self.k - 1):
             s -= ks[i] * log(
-                self.name.cdf(points[i + 1],x[1],loc=self.param[0], scale=x[0]) - self.name.cdf(points[i],x[1], loc=self.param[0],scale=x[0]))
-        s -= ks[k - 1] * log(1 - self.name.cdf(points[k - 1], x[1],loc=self.param[0],scale=x[0]))
+                self.name.cdf(points[i + 1], x[1], loc=self.param[0], scale=x[0])
+                - self.name.cdf(points[i], x[1], loc=self.param[0], scale=x[0]))
+        s -= ks[self.k - 1] * log(1 - self.name.cdf(points[self.k - 1], x[1], loc=self.param[0], scale=x[0]))
         return s
+
     def get_freedom_value(self):
-        freedom_value=self.k-1
+        freedom_value = self.k-1
         if self.scale_estimation:
-            freedom_value=freedom_value-1
+            freedom_value = freedom_value - 1
         if self.shape_estimation:
             freedom_value = freedom_value - 1
         return freedom_value
 
     def calculate_probabilities(self, points):
-        probs = np.zeros(k)
-        for i in range(1, k):
-            probs[i - 1] = self.name.cdf(points[i], self.param[2], loc=self.param[0], scale=self.param[1]) - self.name.cdf(
-                points[i - 1], self.param[2],loc=self.param[0], scale=self.param[1])
-        probs[k - 1] = 1 - self.name.cdf(points[k - 1], self.param[2], loc=self.param[0],scale=self.param[1])
-        return probs
+        probabilities = np.zeros(self.k)
+        for i in range(1, self.k):
+            probabilities[i - 1] = self.name.cdf(
+                points[i],
+                self.param[2],
+                loc=self.param[0],
+                scale=self.param[1]
+            ) - self.name.cdf(
+                points[i - 1],
+                self.param[2],
+                loc=self.param[0],
+                scale=self.param[1]
+            )
+        probabilities[self.k - 1] = 1 - self.name.cdf(points[self.k - 1], self.param[2], loc=self.param[0], scale=self.param[1])
+        return probabilities
 
 
 def chi_square_aog(distname, rvs, loc=None, scale=None, shape=None, alpha=0.05, k=5):
@@ -242,11 +257,11 @@ def chi_square_aog(distname, rvs, loc=None, scale=None, shape=None, alpha=0.05, 
     ks = np.zeros(k)
     points = np.zeros(k + 1)
     probabilities = np.zeros(k)
-    k = np.zeros(k)
+    tmp = np.zeros(k)
+    # k = np.zeros(k)
 
-    # exponential distribution  (scale)
     if distname == stats.expon:
-        fun=ScaleParametricDistribution(distname, scale, k, rvs)
+        fun = ScaleParametricDistribution(distname, scale, k, rvs)
         fun.mle()
 
         try:
@@ -375,7 +390,6 @@ def chi_square_aog(distname, rvs, loc=None, scale=None, shape=None, alpha=0.05, 
     #                                                 aog_tables.gamma_scale_shape_probs[index][i], kind='cubic')
     #                     probabilities[i] = (prob(fun.param[2]))
     #
-    #
     #             except ValueError:
     #                 for i in range(0, k):
     #                     probabilities[i] = 1 / k
@@ -385,11 +399,12 @@ def chi_square_aog(distname, rvs, loc=None, scale=None, shape=None, alpha=0.05, 
     #
     #                 from scipy import interpolate
     #
-    #                 for i in range (0, k):
-    #                     prob = interpolate.interp1d(aog_tables.gamma_shape_values, aog_tables.gamma_shape_probs[index][i], kind='linear')
-    #                     probabilities[i]=(prob(fun.param[2]))
-    #
-    #
+    #                 for i in range(0, k):
+    #                     prob = interpolate.interp1d(
+    #                         aog_tables.gamma_shape_values,
+    #                         aog_tables.gamma_shape_probs[index][i],
+    #                         kind='linear')
+    #                     probabilities[i] = (prob(fun.param[2]))
     #
     #             except ValueError:
     #                 for i in range(0, k):
@@ -405,6 +420,7 @@ def chi_square_aog(distname, rvs, loc=None, scale=None, shape=None, alpha=0.05, 
     #                     prob = interpolate.interp1d(aog_tables.gamma_scale_values,
     #                                                 aog_tables.gamma_scale_probs[index][i], kind='linear')
     #                     probabilities[i] = (prob(fun.param[2]))
+    #                 print("pro", probabilities)
     #
     #             except ValueError:
     #                 for i in range(0, k):
@@ -416,6 +432,8 @@ def chi_square_aog(distname, rvs, loc=None, scale=None, shape=None, alpha=0.05, 
     #             except ValueError:
     #                 for i in range(0, k):
     #                     probabilities[i] = 1 / k
+
+    print('param', fun.param)
     sum = 0
     for i in range(0, k - 1):
         tmp[i] = round(n * probabilities[i])
@@ -444,11 +462,24 @@ def chi_square_aog(distname, rvs, loc=None, scale=None, shape=None, alpha=0.05, 
     distmass = np.array(distmass)
     freq, hsupp = np.histogram(rvs, distsupp)
     chi = 0
+    print (freq, distmass)
     for i in range(0, k):
         chi = chi + (freq[i] / n - distmass[i]) * (freq[i] / n - distmass[i]) / distmass[i]
     chi = chi * n
-    freedom_val=fun.get_freedom_value()
+    freedom_val = fun.get_freedom_value()
 
     pval = stats.distributions.chi2.sf(chi, freedom_val)
-    #return chi
-    return chi, pval, (pval > alpha), 'chisquare - test for %s at scale = %s with pval = %s' % (str(distname.name), str(fun.param), str(pval))
+    return chi, pval, (pval > alpha), 'chisquare - test for %s at scale = %s with pval = %s' % (str(distname.name),
+                                                                                               str(fun.param), str(pval))
+lambd = 200
+loc = 0
+
+one = []
+i = 0
+for i in range(0, 100):
+    t = stats.norm.rvs(loc=loc, scale=lambd)
+    one.append(t)
+loc1 = 0
+lambda1 = 1
+s = chi_square_aog(distname=stats.norm, rvs=one, loc=loc, scale=lambd)
+print (s)
