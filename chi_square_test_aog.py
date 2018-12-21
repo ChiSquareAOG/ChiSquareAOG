@@ -476,5 +476,5 @@ i = 0
 for i in range(0, 100):
     t = stats.norm.rvs(loc=loc, scale=lambd)
     one.append(t)
-s = chi_square_aog(distname=stats.norm, rvs=one, loc=loc, scale=lambd, k=5)
+s = chi_square_aog(distname=stats.norm, rvs=one, scale=lambd, k=5)
 print (s)
