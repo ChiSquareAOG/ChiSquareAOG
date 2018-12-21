@@ -240,7 +240,7 @@ class ShapeScaleParametricDistribution:
         return probabilities
 
 
-def chi_square_aog(distname, rvs, loc=None, scale=None, shape=None, alpha=0.05, k=5):
+def chi_square_aog(distname, rvs, loc=None, scale=None, shape=None, alpha=0.05, k=9):
     '''
         perform chisquare test for random continuous distribution using asymptotically optimal grouping
         Parameters:
@@ -274,6 +274,7 @@ def chi_square_aog(distname, rvs, loc=None, scale=None, shape=None, alpha=0.05, 
     if distname == stats.norm:
         fun = LocScaleParametricDistribution(distname, loc, scale, k, rvs)
         fun.mle()
+        print fun
 
         if fun.loc_estimation:
             if fun.scale_estimation:
@@ -306,11 +307,8 @@ def chi_square_aog(distname, rvs, loc=None, scale=None, shape=None, alpha=0.05, 
                     for i in range(0, k):
                         probabilities[i] = 1 / k
 
-
-                        # logistic distribution
-
     if distname == stats.logistic:
-        fun=LocScaleParametricDistribution(distname, loc, scale, k, rvs)
+        fun = LocScaleParametricDistribution(distname, loc, scale, k, rvs)
         fun.mle()
         if fun.loc_estimation:
             if fun.scale_estimation:
@@ -353,7 +351,7 @@ def chi_square_aog(distname, rvs, loc=None, scale=None, shape=None, alpha=0.05, 
                         probabilities[i] = 1 / k
             else:
                 try:
-                    index=aog_tables.weibull_shape_k.index(k)
+                    index = aog_tables.weibull_shape_k.index(k)
                     probabilities=aog_tables.weibull_shape_probs[index]
                 except ValueError:
                     for i in range(0, k):
@@ -434,44 +432,43 @@ def chi_square_aog(distname, rvs, loc=None, scale=None, shape=None, alpha=0.05, 
     #                     probabilities[i] = 1 / k
 
     print('param', fun.param)
-    sum = 0
+    tmp_sum = 0
     for i in range(0, k - 1):
         tmp[i] = round(n * probabilities[i])
-        sum += tmp[i]
+        tmp_sum += tmp[i]
 
         ks[i] = int(tmp[i])
-    tmp[k - 1] = n - sum
+    tmp[k - 1] = n - tmp_sum
     ks[k - 1] = int(tmp[k - 1])
 
 
-    sum = 0
+    tmp_sum = 0
     points[0] = stats.norm.a
     for i in range(0, k - 1):
-        sum += ks[i]
-        points[i + 1] = rvs[int(sum) - 1]
+        tmp_sum += ks[i]
+        points[i + 1] = rvs[int(tmp_sum) - 1]
     points[k] = distname.b
     fun.estimate_parameters(points, ks)
     distsupp = []
     for i in range(0, k + 1):
         distsupp.append(points[i])
-    probs = fun.calculate_probabilities(points)
-    distmass = []
+    probabilities = fun.calculate_probabilities(points)
+    distribution_mass = []
     for i in range(0, k):
-        distmass.append(probs[i])
+        distribution_mass.append(probabilities[i])
     distsupp = np.array(distsupp)
-    distmass = np.array(distmass)
+    distribution_mass = np.array(distribution_mass)
     freq, hsupp = np.histogram(rvs, distsupp)
     chi = 0
-    print (freq, distmass)
+    print (freq, distribution_mass)
     for i in range(0, k):
-        chi = chi + (freq[i] / n - distmass[i]) * (freq[i] / n - distmass[i]) / distmass[i]
-    chi = chi * n
+        chi += (freq[i] - n * distribution_mass[i]) * (freq[i] - n * distribution_mass[i]) / n * distribution_mass[i]
     freedom_val = fun.get_freedom_value()
 
     pval = stats.distributions.chi2.sf(chi, freedom_val)
-    return chi, pval, (pval > alpha), 'chisquare - test for %s at scale = %s with pval = %s' % (str(distname.name),
-                                                                                               str(fun.param), str(pval))
-lambd = 200
+    return chi, pval, (pval > alpha), \
+           'chisquare - test for %s at scale = %s with pval = %s' % (str(distname.name), str(fun.param), str(pval))
+lambd = 1
 loc = 0
 
 one = []
@@ -479,7 +476,5 @@ i = 0
 for i in range(0, 100):
     t = stats.norm.rvs(loc=loc, scale=lambd)
     one.append(t)
-loc1 = 0
-lambda1 = 1
-s = chi_square_aog(distname=stats.norm, rvs=one, loc=loc, scale=lambd)
+s = chi_square_aog(distname=stats.norm, rvs=one, loc=loc, scale=lambd, k=5)
 print (s)
